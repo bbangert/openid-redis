@@ -1,3 +1,4 @@
+## -*- coding: utf-8 -*-
 """Test the Redis Store
 
 This filed copied entirely from the python-openid storetest.py.
@@ -5,11 +6,6 @@ Copyright JanRain
 Apache Software License
 
 """
-from openid.association import Association
-from openid.cryptutil import randomString
-from openid.store.nonce import mkNonce, split
-
-import redis
 
 import unittest
 import string
@@ -18,7 +14,11 @@ import socket
 import random
 import os
 
-db_host = 'dbtest'
+import redis
+from nose.tools import raises
+from openid.association import Association
+from openid.cryptutil import randomString
+from openid.store.nonce import mkNonce, split
 
 allowed_handle = []
 for c in string.printable:
@@ -51,6 +51,9 @@ def _store_check(store):
     now = int(time.time())
 
     server_url = 'http://www.myopenid.com/openid'
+    horrid_server_url = u'http://Иasdfкwщо/opnid'.encode('utf-8')
+    bad_server_url = 'http:www.openid.com/'
+    
     def genAssoc(issued, lifetime=600):
         sec = generateSecret(20)
         hdl = generateHandle(128)
@@ -78,6 +81,16 @@ def _store_check(store):
     # Check that after storage, getting returns the same result
     store.storeAssociation(server_url, assoc)
     checkRetrieve(server_url, None, assoc)
+
+    # Check that after storage, getting returns the same result for a nasty url
+    store.storeAssociation(horrid_server_url, assoc)
+    checkRetrieve(horrid_server_url, None, assoc)
+
+    # Check that storing a bad url doesn't work
+    @raises(ValueError)
+    def test_bad_url():
+        store.storeAssociation(bad_server_url, assoc)
+    test_bad_url()
 
     # more than once
     checkRetrieve(server_url, None, assoc)

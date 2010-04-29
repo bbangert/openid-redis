@@ -80,11 +80,7 @@ class RedisStore(OpenIDStore):
         # Determine how long this association is good for
         issued_offset = int(time.time()) - association.issued
         seconds_from_now = issued_offset + association.lifetime
-        
-        # If this association is already expired, don't even store it
-        if seconds_from_now < 1:
-            return None
-        
+                
         association_s = association.serialize()
         key_name = self.getAssociationFilename(server_url, association.handle)
         
@@ -133,11 +129,7 @@ class RedisStore(OpenIDStore):
         if abs(timestamp - time.time()) > nonce.SKEW:
             log.debug('Timestamp from current time is less than skew')
             return False
-        
-        # We're not even holding onto nonces apparently
-        if nonce.SKEW < 1:
-            return False
-        
+                
         if server_url:
             proto, rest = server_url.split('://', 1)
         else:
