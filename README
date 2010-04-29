@@ -1,0 +1,36 @@
+openid-redis
+============
+
+openid-redis is a Redis back-end storage for use with the python-openid
+package made by JanRain. It implements the OpenIDStore interface and
+can be plugged directly in.
+
+IRC
+---
+
+I'm usually on Freenode on the #pylons channel, or #pythonpaste.
+
+Requirements
+------------
+    
+    python-openid: http://pypi.python.org/pypi/python-openid/
+    Python redis library: http://github.com/andymccurdy/redis-py
+
+Installation
+------------
+
+Install python-openid and the redis library, then install openid-redis.
+    
+    easy_install openid-redis
+
+Usage
+-----
+
+When using python-openid, use the Redis store:
+    
+    from openidredis import RedisStore
+    from openid.server import server
+    
+    openid_store = RedisStore()
+    openid_server = server.Server(openid_store, 'base_url_here')
+
