@@ -7,6 +7,8 @@ python-openid FileStore code is Copyright JanRain, under the Apache Software
 License.
 
 """
+import string
+
 from openid import cryptutil
 from openid import oidutil
 from openid.association import Association
@@ -89,7 +91,7 @@ class RedisStore(OpenIDStore):
     
     def removeAssociation(self, server_url, handle):
         key_name = self.getAssociationFilename(server_url, handle)
-        return self._conn.del(key_name)
+        return self._conn.delete(key_name)
     
     def useNonce(self, server_url, timestamp, salt):
         if abs(timestamp - time.time()) > nonce.SKEW:
