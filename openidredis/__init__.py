@@ -1,3 +1,12 @@
+"""Redis Store
+
+This back-end is heavily based on the FileStore from the python-openid package
+and sections are copied whole-sale from it.
+
+python-openid FileStore code is Copyright JanRain, under the Apache Software
+License.
+
+"""
 from openid import cryptutil
 from openid import oidutil
 from openid.association import Association
@@ -83,4 +92,26 @@ class RedisStore(OpenIDStore):
         return self._conn.del(key_name)
     
     def useNonce(self, server_url, timestamp, salt):
+        if abs(timestamp - time.time()) > nonce.SKEW:
+            return False
         
+        if server_url:
+            proto, rest = server_url.split('://', 1)
+        else:
+            # Create empty proto / rest values for empty server_url,
+            # which is part of a consumer-generated nonce.
+            proto, rest = '', ''
+
+        domain = _filenameEscape(rest.split('/', 1)[0])
+        url_hash = _safe64(server_url)
+        salt_hash = _safe64(salt)
+
+        anonce = '%08x-%s-%s-%s-%s' % (timestamp, proto, domain,
+                                         url_hash, salt_hash)
+        exists = self._conn.setnx(anonce, 'nonce')
+        if exists:
+            return False
+        else:
+            # Expire the nonce in 5 minutes
+            self._conn.expire(anonce, 300)
+            return True
