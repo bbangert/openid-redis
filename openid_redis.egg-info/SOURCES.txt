@@ -1,9 +1,0 @@
-setup.cfg
-setup.py
-openid_redis.egg-info/PKG-INFO
-openid_redis.egg-info/SOURCES.txt
-openid_redis.egg-info/dependency_links.txt
-openid_redis.egg-info/entry_points.txt
-openid_redis.egg-info/not-zip-safe
-openid_redis.egg-info/top_level.txt
-openidredis/__init__.py
