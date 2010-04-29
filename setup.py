@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 import sys, os
 
-version = '0.5'
+version = '0.6'
 
 setup(name='openid-redis',
       version=version,
@@ -17,7 +17,7 @@ setup(name='openid-redis',
       keywords='openid redis',
       author='Ben Bangert',
       author_email='ben@groovie.org',
-      url='http://bbangert.github.com/openid-redis',
+      url='http://github.com/bbangert/openid-redis',
       license='MIT',
       packages=find_packages(exclude=['ez_setup', 'examples', 'tests']),
       include_package_data=True,
