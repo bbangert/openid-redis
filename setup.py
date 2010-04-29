@@ -8,19 +8,22 @@ setup(name='openid-redis',
       description="A Redis storage backend for pthe python-openid package",
       long_description="""\
 """,
-      classifiers=[], # Get strings from http://pypi.python.org/pypi?%3Aaction=list_classifiers
+      classifiers=[
+        "Development Status :: 4 - Beta",
+        "Intended Audience :: Developers",
+        "License :: OSI Approved :: MIT License",
+        "Topic :: Internet :: WWW/HTTP"
+      ],
       keywords='openid redis',
       author='Ben Bangert',
       author_email='ben@groovie.org',
-      url='',
+      url='http://bbangert.github.com/openid-redis',
       license='MIT',
       packages=find_packages(exclude=['ez_setup', 'examples', 'tests']),
       include_package_data=True,
       zip_safe=False,
-      install_requires=[
-          # -*- Extra requirements: -*-
-      ],
+      install_requires=["redis>=1.34.1", "python-openid>=2.2.4"],
       entry_points="""
       # -*- Entry points: -*-
       """,
-      )
+)
