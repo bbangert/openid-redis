@@ -7,7 +7,9 @@ python-openid FileStore code is Copyright JanRain, under the Apache Software
 License.
 
 """
+import logging
 import string
+import time
 
 from openid import cryptutil
 from openid import oidutil
@@ -21,6 +23,8 @@ __all__ = ['RedisStore']
 
 _filename_allowed = string.ascii_letters + string.digits + '.'
 _isFilenameSafe = set(_filename_allowed).__contains__
+
+log = logging.getLogger(__name__)
 
 def _safe64(s):
     h64 = oidutil.toBase64(cryptutil.sha1(s))
@@ -68,33 +72,44 @@ class RedisStore(OpenIDStore):
             handle_hash = ''
 
         filename = '%s-%s-%s-%s' % (proto, domain, url_hash, handle_hash)
+        log.debug('Returning filename: %s', filename)
         return filename
 
     def storeAssociation(self, server_url, association):
-        """We use a bunch of the"""
         association_s = association.serialize()
-        key_name = self.getAssociationFilename(server_url, association.handle)
-        self._conn.set(key_name, association_s)
+        full_key_name = self.getAssociationFilename(server_url, association.handle)
+        server_key_name = self.getAssociationFilename(server_url, None)
         
-        # By default, set the expiration from the assocation expiration
-        self._conn.expire(key_name, association.lifetime)
+        for key_name in [full_key_name, server_key_name]:
+            self._conn.set(key_name, association_s)
+            log.debug('Storing key: %s', key_name)
+        
+            # By default, set the expiration from the assocation expiration
+            self._conn.expire(key_name, association.lifetime)
+            log.debug('Expiring: %s, in %s seconds', key_name, association.lifetime)
+        return None
     
     def getAssociation(self, server_url, handle=None):
+        log.debug('Association requested for server_url: %s, with handle: %s', server_url, handle)
         key_name = self.getAssociationFilename(server_url, handle)
         if handle is None:
             handle = ''
         association_s = self._conn.get(key_name)
         if association_s:
+            log.debug('getAssociation found, returning association')
             return Association.deserialize(association_s)
         else:
+            log.debug('No association found for getAssociation')
             return None
     
     def removeAssociation(self, server_url, handle):
         key_name = self.getAssociationFilename(server_url, handle)
+        log.debug('Removing association: %s', key_name)
         return self._conn.delete(key_name)
     
     def useNonce(self, server_url, timestamp, salt):
         if abs(timestamp - time.time()) > nonce.SKEW:
+            log.debug('Invalid nonce used, time skew boom')
             return False
         
         if server_url:
@@ -110,10 +125,12 @@ class RedisStore(OpenIDStore):
 
         anonce = '%08x-%s-%s-%s-%s' % (timestamp, proto, domain,
                                          url_hash, salt_hash)
-        exists = self._conn.setnx(anonce, 'nonce')
-        if exists:
-            return False
-        else:
+        new_nonce = self._conn.setnx(anonce, 'nonce')
+        if new_nonce:
             # Expire the nonce in 5 minutes
             self._conn.expire(anonce, 300)
+            log.debug('Unused nonce, all good')
             return True
+        else:
+            log.debug('Nonce already exists, oops')
+            return False
