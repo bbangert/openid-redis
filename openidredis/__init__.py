@@ -50,6 +50,7 @@ class RedisStore(OpenIDStore):
         self.port = port
         self.db = db
         self.key_prefix = key_prefix
+        self.log_debug = logging.DEBUG >= log.getEffectiveLevel()
         self._conn = redis.Redis(host=self.host, port=self.port, db=self.db)
     
     def getAssociationFilename(self, server_url, handle):
@@ -73,7 +74,8 @@ class RedisStore(OpenIDStore):
             handle_hash = ''
 
         filename = '%s-%s-%s-%s-%s' % (self.key_prefix, proto, domain, url_hash, handle_hash)
-        log.debug('Returning filename: %s', filename)
+        if self.log_debug:
+            log.debug('Returning filename: %s', filename)
         return filename
 
     def storeAssociation(self, server_url, association):
@@ -85,22 +87,29 @@ class RedisStore(OpenIDStore):
         key_name = self.getAssociationFilename(server_url, association.handle)
         
         self._conn.set(key_name, association_s)
-        log.debug('Storing key: %s', key_name)
+        if self.log_debug:
+            log.debug('Storing key: %s', key_name)
     
         # By default, set the expiration from the assocation expiration
         self._conn.expire(key_name, seconds_from_now)
-        log.debug('Expiring: %s, in %s seconds', key_name, seconds_from_now)
+        if self.log_debug:
+            log.debug('Expiring: %s, in %s seconds', key_name, seconds_from_now)
         return None
     
     def getAssociation(self, server_url, handle=None):
-        log.debug('Association requested for server_url: %s, with handle: %s', server_url, handle)
+        log_debug = self.log_debug
+        
+        if log_debug:
+            log.debug('Association requested for server_url: %s, with handle: %s', server_url, handle)
+        
         if handle is None:
             # Retrieve all the keys for this server connection
             key_name = self.getAssociationFilename(server_url, '')
             assocs = self._conn.keys('%s*' % key_name)
             
             if not assocs:
-                log.debug('No association found for: %s', server_url)
+                if log_debug:
+                    log.debug('No association found for: %s', server_url)
                 return None
             
             # Now use the one that was issued most recently
@@ -108,26 +117,32 @@ class RedisStore(OpenIDStore):
             for assoc in self._conn.mget(assocs):
                 associations.append(Association.deserialize(assoc))
             associations.sort(cmp=lambda x,y: cmp(x.issued, y.issued))
-            log.debug('getAssociation found, returns most recently issued')
+            if log_debug:
+                log.debug('getAssociation found, returns most recently issued')
             return associations[-1]
         else:
             key_name = self.getAssociationFilename(server_url, handle)
             association_s = self._conn.get(key_name)
             if association_s:
-                log.debug('getAssociation found, returning association')
+                if log_debug:
+                    log.debug('getAssociation found, returning association')
                 return Association.deserialize(association_s)
             else:
-                log.debug('No association found for getAssociation')
+                if log_debug:
+                    log.debug('No association found for getAssociation')
                 return None
     
     def removeAssociation(self, server_url, handle):
         key_name = self.getAssociationFilename(server_url, handle)
-        log.debug('Removing association: %s', key_name)
+        if self.log_debug:
+            log.debug('Removing association: %s', key_name)
         return self._conn.delete(key_name)
     
     def useNonce(self, server_url, timestamp, salt):
+        log_debug = self.log_debug
         if abs(timestamp - time.time()) > nonce.SKEW:
-            log.debug('Timestamp from current time is less than skew')
+            if log_debug:
+                log.debug('Timestamp from current time is less than skew')
             return False
                 
         if server_url:
@@ -144,12 +159,13 @@ class RedisStore(OpenIDStore):
         anonce = '%s-nonce-%08x-%s-%s-%s-%s' % (self.key_prefix, timestamp, proto, domain,
                                          url_hash, salt_hash)
         exists = self._conn.getset(anonce, '%s' % timestamp)
-        log.debug('And new_nonce results: %s', exists)
         if exists:
-            log.debug('Nonce already exists, oops: %s', anonce)
+            if log_debug:
+                log.debug('Nonce already exists: %s', anonce)
             return False
         else:
-            log.debug('Unused nonce, all good: %s', anonce)
+            if log_debug:
+                log.debug('Unused nonce, storing: %s', anonce)
             # Let's set an expire time
             curr_offset = time.time() - timestamp
             self._conn.expire(anonce, curr_offset + nonce.SKEW)
