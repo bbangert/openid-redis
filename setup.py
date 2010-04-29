@@ -5,7 +5,7 @@ version = '0.1'
 
 setup(name='openid-redis',
       version=version,
-      description="A Redis storage backend for pthe python-openid package",
+      description="A Redis storage backend for the python-openid package",
       long_description="""\
 """,
       classifiers=[
