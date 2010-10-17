@@ -168,7 +168,7 @@ class RedisStore(OpenIDStore):
                 log.debug('Unused nonce, storing: %s', anonce)
             # Let's set an expire time
             curr_offset = time.time() - timestamp
-            self._conn.expire(anonce, curr_offset + nonce.SKEW)
+            self._conn.expire(anonce, int(curr_offset + nonce.SKEW))
             return True
     
     def cleanupNonces(self):
