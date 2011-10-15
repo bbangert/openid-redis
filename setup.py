@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 import sys, os
 
-version = '0.7'
+version = '1.0'
 
 setup(name='openid-redis',
       version=version,
@@ -9,7 +9,7 @@ setup(name='openid-redis',
       long_description="""\
 """,
       classifiers=[
-        "Development Status :: 4 - Beta",
+        "Development Status :: 6 - Mature",
         "Intended Audience :: Developers",
         "License :: OSI Approved :: MIT License",
         "Topic :: Internet :: WWW/HTTP"
@@ -22,7 +22,7 @@ setup(name='openid-redis',
       packages=find_packages(exclude=['ez_setup', 'examples', 'tests']),
       include_package_data=True,
       zip_safe=False,
-      install_requires=["redis>=1.34.1", "python-openid>=2.2.4"],
+      install_requires=["redis>=2.4.0", "python-openid>=2.2.5"],
       entry_points="""
       # -*- Entry points: -*-
       """,
