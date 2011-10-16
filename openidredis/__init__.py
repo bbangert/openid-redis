@@ -45,13 +45,20 @@ def _filenameEscape(s):
 
 class RedisStore(OpenIDStore):
     """Implementation of OpenIDStore for Redis"""
-    def __init__(self, host='localhost', port=6379, db=0, key_prefix='oid_redis'):
-        self.host = host
-        self.port = port
-        self.db = db
+    def __init__(self, host='localhost', port=6379, db=0,
+            key_prefix='oid_redis', conn=None):
+        if conn is not None:
+            self._conn = conn
+            self.host = self._conn.connection_pool.connection_kwargs['host']
+            self.port = self._conn.connection_pool.connection_kwargs['port']
+            self.db = self._conn.connection_pool.connection_kwargs['db']
+        else:
+            self.host = host
+            self.port = port
+            self.db = db
+            self._conn = redis.Redis(host=self.host, port=self.port, db=self.db)
         self.key_prefix = key_prefix
         self.log_debug = logging.DEBUG >= log.getEffectiveLevel()
-        self._conn = redis.Redis(host=self.host, port=self.port, db=self.db)
     
     def getAssociationFilename(self, server_url, handle):
         """Create a unique filename for a given server url and
