@@ -233,12 +233,15 @@ def _store_check(store):
         nonceModule.SKEW = orig_skew
 
 def test_redisstore():
+    import redis
     from openidredis import RedisStore
+
+    r = redis.Redis()
     try:
         _store_check(RedisStore(key_prefix='oid_redis_test'))
+        _store_check(RedisStore(r, key_prefix='oid_redis_test'))
     finally:
         # Clear out old keys
-        import redis
         r = redis.Redis()
         for key in r.keys('oid_redis_test*'):
             r.delete(key)
