@@ -236,12 +236,22 @@ def test_redisstore():
     import redis
     from openidredis import RedisStore
 
-    r = redis.Redis()
+    conn = redis.Redis()
+
+    def clear_keys():
+        # Clear out old keys
+        for key in conn.keys('oid_redis_test*'):
+            conn.delete(key)
+
+    # Don't pass a redis connection instance, leaving it up to openid-redis to
+    # create one.
     try:
         _store_check(RedisStore(key_prefix='oid_redis_test'))
-        _store_check(RedisStore(r, key_prefix='oid_redis_test'))
     finally:
-        # Clear out old keys
-        r = redis.Redis()
-        for key in r.keys('oid_redis_test*'):
-            r.delete(key)
+        clear_keys()
+
+    # Pass optional redis connection instance.
+    try:
+        _store_check(RedisStore(key_prefix='oid_redis_test', conn=conn))
+    finally:
+        clear_keys()
