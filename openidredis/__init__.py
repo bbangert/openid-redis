@@ -45,14 +45,8 @@ def _filenameEscape(s):
 
 class RedisStore(OpenIDStore):
     """Implementation of OpenIDStore for Redis"""
-    def __init__(self, conn=None, key_prefix='oid_redis'):
-        if conn:
-            self._conn = conn
-        else:
-            self._conn = redis.Redis()
-        self.host = self._conn.connection_pool.connection_kwargs['host']
-        self.port = self._conn.connection_pool.connection_kwargs['port']
-        self.db = self._conn.connection_pool.connection_kwargs['db']
+    def __init__(self, conn, key_prefix='oid_redis'):
+        self._conn = conn
         self.key_prefix = key_prefix
         self.log_debug = logging.DEBUG >= log.getEffectiveLevel()
     
