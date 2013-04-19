@@ -22,7 +22,6 @@ setup(name='openid-redis',
       packages=find_packages(exclude=['ez_setup', 'examples', 'tests']),
       include_package_data=True,
       zip_safe=False,
-      install_requires=["redis>=2.4.0", "python-openid>=2.2.5"],
       entry_points="""
       # -*- Entry points: -*-
       """,
