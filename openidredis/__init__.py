@@ -46,17 +46,33 @@ def _filenameEscape(s):
 class RedisStore(OpenIDStore):
     """Implementation of OpenIDStore for Redis"""
     def __init__(self, host='localhost', port=6379, db=0,
-            key_prefix='oid_redis', conn=None):
+            key_prefix='oid_redis', conn=None, unix_socket=None,
+            password=None):
         if conn is not None:
             self._conn = conn
-            self.host = self._conn.connection_pool.connection_kwargs['host']
-            self.port = self._conn.connection_pool.connection_kwargs['port']
+            try:
+                self.host = self._conn.connection_pool.connection_kwargs['host']
+                self.port = self._conn.connection_pool.connection_kwargs['port']
+                self.unix_socket = None
+            except KeyError:
+                self.host = None
+                self.port = 0
+                self.unix_socket = self._conn.connection_pool.connection_kwargs['path']
             self.db = self._conn.connection_pool.connection_kwargs['db']
+            self.password = self._conn.connection_pool.connection_kwargs['password']
         else:
+            self.unix_socket = unix_socket
             self.host = host
             self.port = port
             self.db = db
-            self._conn = redis.Redis(host=self.host, port=self.port, db=self.db)
+            self.password = password
+            redis_args = {'db': db, 'password': password}
+            if self.unix_socket:
+                redis_args['unix_socket_path'] = self.unix_socket
+            else:
+                redis_args['host'] = self.host
+                redis_args['port'] = self.port
+            self._conn = redis.Redis(**redis_args)
         self.key_prefix = key_prefix
         self.log_debug = logging.DEBUG >= log.getEffectiveLevel()
     
