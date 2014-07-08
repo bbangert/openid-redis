@@ -47,7 +47,7 @@ class RedisStore(OpenIDStore):
     """Implementation of OpenIDStore for Redis"""
     def __init__(self, host='localhost', port=6379, db=0,
             key_prefix='oid_redis', conn=None, unix_socket=None,
-            password=None, file_name_db=None, nonce_timeout=nonce.SKEW):
+            password=None, file_name_db=None, conn_keystore=None, nonce_timeout=nonce.SKEW):
         self.nonce_timeout = nonce_timeout
 
         if conn is not None:
@@ -62,6 +62,11 @@ class RedisStore(OpenIDStore):
                 self.unix_socket = self._conn.connection_pool.connection_kwargs['path']
             self.db = self._conn.connection_pool.connection_kwargs['db']
             self.password = self._conn.connection_pool.connection_kwargs['password']
+
+            if not conn_keystore:
+                self._conn_keystore = self._conn
+            else:
+                self._conn_keystore = conn_keystore
         else:
             self.unix_socket = unix_socket
             self.host = host
@@ -172,7 +177,7 @@ class RedisStore(OpenIDStore):
     
     def useNonce(self, server_url, timestamp, salt):
         log_debug = self.log_debug
-        if abs(timestamp - time.time()) > nonce.SKEW:
+        if abs(timestamp - time.time()) > self.nonce_timeout:
             if log_debug:
                 log.debug('Timestamp from current time is less than skew')
             return False
