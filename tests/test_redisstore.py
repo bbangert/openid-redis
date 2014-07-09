@@ -7,14 +7,12 @@ Apache Software License
 
 """
 
-import unittest
 import string
 import time
 import socket
 import random
 import os
 
-import redis
 from nose.tools import raises
 from openid.association import Association
 from openid.cryptutil import randomString
@@ -210,19 +208,19 @@ def _store_check(store):
     from openid.store import nonce as nonceModule
     orig_skew = nonceModule.SKEW
     try:
-        nonceModule.SKEW = 0
+        store.nonce_timeout = 0
         store.cleanupNonces()
         # Set SKEW high so stores will keep our nonces.
-        nonceModule.SKEW = 100000
+        store.nonce_timeout = 100000
         assert store.useNonce(server_url, *split(old_nonce1))
         assert store.useNonce(server_url, *split(old_nonce2))
         assert store.useNonce(server_url, *split(recent_nonce))
 
-        nonceModule.SKEW = 3600
+        store.nonce_timeout = 3600
         cleaned = store.cleanupNonces()
         assert cleaned == 2, "Cleaned %r nonces." % (cleaned,)
 
-        nonceModule.SKEW = 100000
+        store.nonce_timeout = 100000
         # A roundabout method of checking that the old nonces were cleaned is
         # to see if we're allowed to add them again.
         assert store.useNonce(server_url, *split(old_nonce1))
@@ -237,9 +235,14 @@ def test_redisstore():
     from openidredis import RedisStore
 
     conn = redis.Redis()
+    conn2 = redis.Redis(db=2)
 
     def clear_keys():
         # Clear out old keys
+        _clean_keys(conn)
+        _clean_keys(conn2)
+
+    def _clean_keys(conn):
         for key in conn.keys('oid_redis_test*'):
             conn.delete(key)
 
@@ -250,8 +253,19 @@ def test_redisstore():
     finally:
         clear_keys()
 
+    try:
+        _store_check(RedisStore(key_prefix='oid_redis_test', file_name_db=2))
+    finally:
+        clear_keys()
+
     # Pass optional redis connection instance.
     try:
         _store_check(RedisStore(key_prefix='oid_redis_test', conn=conn))
+    finally:
+        clear_keys()
+
+    # Pass optional redis connection instance.
+    try:
+        _store_check(RedisStore(key_prefix='oid_redis_test', conn=conn, conn_keystore=conn2))
     finally:
         clear_keys()
