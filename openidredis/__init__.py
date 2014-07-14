@@ -47,7 +47,9 @@ class RedisStore(OpenIDStore):
     """Implementation of OpenIDStore for Redis"""
     def __init__(self, host='localhost', port=6379, db=0,
             key_prefix='oid_redis', conn=None, unix_socket=None,
-            password=None):
+            password=None, file_name_db=None, conn_keystore=None, nonce_timeout=nonce.SKEW):
+        self.nonce_timeout = nonce_timeout
+
         if conn is not None:
             self._conn = conn
             try:
@@ -60,6 +62,11 @@ class RedisStore(OpenIDStore):
                 self.unix_socket = self._conn.connection_pool.connection_kwargs['path']
             self.db = self._conn.connection_pool.connection_kwargs['db']
             self.password = self._conn.connection_pool.connection_kwargs['password']
+
+            if not conn_keystore:
+                self._conn_keystore = self._conn
+            else:
+                self._conn_keystore = conn_keystore
         else:
             self.unix_socket = unix_socket
             self.host = host
@@ -73,6 +80,13 @@ class RedisStore(OpenIDStore):
                 redis_args['host'] = self.host
                 redis_args['port'] = self.port
             self._conn = redis.Redis(**redis_args)
+
+            if file_name_db:
+                redis_args['db'] = file_name_db
+                self._conn_keystore = redis.Redis(**redis_args)
+            else:
+                self._conn_keystore = self._conn
+
         self.key_prefix = key_prefix
         self.log_debug = logging.DEBUG >= log.getEffectiveLevel()
     
@@ -109,12 +123,12 @@ class RedisStore(OpenIDStore):
         association_s = association.serialize()
         key_name = self.getAssociationFilename(server_url, association.handle)
         
-        self._conn.set(key_name, association_s)
+        self._conn_keystore.set(key_name, association_s)
         if self.log_debug:
             log.debug('Storing key: %s', key_name)
     
         # By default, set the expiration from the assocation expiration
-        self._conn.expire(key_name, seconds_from_now)
+        self._conn_keystore.expire(key_name, seconds_from_now)
         if self.log_debug:
             log.debug('Expiring: %s, in %s seconds', key_name, seconds_from_now)
         return None
@@ -128,7 +142,7 @@ class RedisStore(OpenIDStore):
         if handle is None:
             # Retrieve all the keys for this server connection
             key_name = self.getAssociationFilename(server_url, '')
-            assocs = self._conn.keys('%s*' % key_name)
+            assocs = self._conn_keystore.keys('%s*' % key_name)
             
             if not assocs:
                 if log_debug:
@@ -137,7 +151,7 @@ class RedisStore(OpenIDStore):
             
             # Now use the one that was issued most recently
             associations = []
-            for assoc in self._conn.mget(assocs):
+            for assoc in self._conn_keystore.mget(assocs):
                 associations.append(Association.deserialize(assoc))
             associations.sort(cmp=lambda x,y: cmp(x.issued, y.issued))
             if log_debug:
@@ -145,7 +159,7 @@ class RedisStore(OpenIDStore):
             return associations[-1]
         else:
             key_name = self.getAssociationFilename(server_url, handle)
-            association_s = self._conn.get(key_name)
+            association_s = self._conn_keystore.get(key_name)
             if association_s:
                 if log_debug:
                     log.debug('getAssociation found, returning association')
@@ -159,11 +173,11 @@ class RedisStore(OpenIDStore):
         key_name = self.getAssociationFilename(server_url, handle)
         if self.log_debug:
             log.debug('Removing association: %s', key_name)
-        return self._conn.delete(key_name)
+        return self._conn_keystore.delete(key_name)
     
     def useNonce(self, server_url, timestamp, salt):
         log_debug = self.log_debug
-        if abs(timestamp - time.time()) > nonce.SKEW:
+        if abs(timestamp - time.time()) > self.nonce_timeout:
             if log_debug:
                 log.debug('Timestamp from current time is less than skew')
             return False
@@ -191,7 +205,7 @@ class RedisStore(OpenIDStore):
                 log.debug('Unused nonce, storing: %s', anonce)
             # Let's set an expire time
             curr_offset = time.time() - timestamp
-            self._conn.expire(anonce, int(curr_offset + nonce.SKEW))
+            self._conn.expire(anonce, int(curr_offset + self.nonce_timeout))
             return True
     
     def cleanupNonces(self):
@@ -200,7 +214,7 @@ class RedisStore(OpenIDStore):
         for key in keys:
             # See if its expired
             timestamp = int(self._conn.get(key))
-            if abs(timestamp - time.time()) > nonce.SKEW:
+            if abs(timestamp - time.time()) > self.nonce_timeout:
                 self._conn.delete(key)
                 expired += 1
         return expired
