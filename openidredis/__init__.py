@@ -128,7 +128,15 @@ class RedisStore(OpenIDStore):
         if handle is None:
             # Retrieve all the keys for this server connection
             key_name = self.getAssociationFilename(server_url, '')
-            assocs = self._conn.keys('%s*' % key_name)
+            cursor = 0
+            assocs = set()
+            while True:
+                state = self._conn.scan(cursor, '%s*' % key_name)
+                cursor = state[0]
+                for key in state[1]:
+                    assocs.add(key)
+                if cursor == 0:
+                    break
             
             if not assocs:
                 if log_debug:
@@ -195,7 +203,15 @@ class RedisStore(OpenIDStore):
             return True
     
     def cleanupNonces(self):
-        keys = self._conn.keys('%s-nonce-*' % self.key_prefix)
+        cursor = 0
+        keys = set()
+        while True:
+            state = self._conn.scan(cursor, '%s-nonce-*' % self.key_prefix)
+            cursor = state[0]
+            for key in state[1]:
+                keys.add(key)
+            if cursor == 0:
+                break
         expired = 0
         for key in keys:
             # See if its expired
