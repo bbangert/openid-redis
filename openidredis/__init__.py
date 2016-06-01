@@ -50,16 +50,6 @@ class RedisStore(OpenIDStore):
             password=None):
         if conn is not None:
             self._conn = conn
-            try:
-                self.host = self._conn.connection_pool.connection_kwargs['host']
-                self.port = self._conn.connection_pool.connection_kwargs['port']
-                self.unix_socket = None
-            except KeyError:
-                self.host = None
-                self.port = 0
-                self.unix_socket = self._conn.connection_pool.connection_kwargs['path']
-            self.db = self._conn.connection_pool.connection_kwargs['db']
-            self.password = self._conn.connection_pool.connection_kwargs['password']
         else:
             self.unix_socket = unix_socket
             self.host = host
