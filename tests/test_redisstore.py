@@ -255,3 +255,9 @@ def test_redisstore():
         _store_check(RedisStore(key_prefix='oid_redis_test', conn=conn))
     finally:
         clear_keys()
+
+    # Pass optional redis connection instance and optional scan_count
+    try:
+        _store_check(RedisStore(key_prefix='oid_redis_test', conn=conn, scan_count=1000))
+    finally:
+        clear_keys()

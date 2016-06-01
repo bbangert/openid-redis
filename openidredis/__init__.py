@@ -47,7 +47,8 @@ class RedisStore(OpenIDStore):
     """Implementation of OpenIDStore for Redis"""
     def __init__(self, host='localhost', port=6379, db=0,
             key_prefix='oid_redis', conn=None, unix_socket=None,
-            password=None):
+            password=None, scan_count=None):
+        self._scan_count = scan_count
         if conn is not None:
             self._conn = conn
             try:
@@ -128,7 +129,15 @@ class RedisStore(OpenIDStore):
         if handle is None:
             # Retrieve all the keys for this server connection
             key_name = self.getAssociationFilename(server_url, '')
-            assocs = self._conn.keys('%s*' % key_name)
+            cursor = 0
+            assocs = set()
+            while True:
+                state = self._conn.scan(cursor, '%s*' % key_name, self._scan_count)
+                cursor = state[0]
+                for key in state[1]:
+                    assocs.add(key)
+                if cursor == 0:
+                    break
             
             if not assocs:
                 if log_debug:
@@ -195,7 +204,15 @@ class RedisStore(OpenIDStore):
             return True
     
     def cleanupNonces(self):
-        keys = self._conn.keys('%s-nonce-*' % self.key_prefix)
+        cursor = 0
+        keys = set()
+        while True:
+            state = self._conn.scan(cursor, '%s-nonce-*' % self.key_prefix, self._scan_count)
+            cursor = state[0]
+            for key in state[1]:
+                keys.add(key)
+            if cursor == 0:
+                break
         expired = 0
         for key in keys:
             # See if its expired
