@@ -47,7 +47,8 @@ class RedisStore(OpenIDStore):
     """Implementation of OpenIDStore for Redis"""
     def __init__(self, host='localhost', port=6379, db=0,
             key_prefix='oid_redis', conn=None, unix_socket=None,
-            password=None):
+            password=None, scan_count=None):
+        self._scan_count = scan_count
         if conn is not None:
             self._conn = conn
             try:
@@ -131,7 +132,7 @@ class RedisStore(OpenIDStore):
             cursor = 0
             assocs = set()
             while True:
-                state = self._conn.scan(cursor, '%s*' % key_name)
+                state = self._conn.scan(cursor, '%s*' % key_name, self._scan_count)
                 cursor = state[0]
                 for key in state[1]:
                     assocs.add(key)
@@ -206,7 +207,7 @@ class RedisStore(OpenIDStore):
         cursor = 0
         keys = set()
         while True:
-            state = self._conn.scan(cursor, '%s-nonce-*' % self.key_prefix)
+            state = self._conn.scan(cursor, '%s-nonce-*' % self.key_prefix, self._scan_count)
             cursor = state[0]
             for key in state[1]:
                 keys.add(key)
