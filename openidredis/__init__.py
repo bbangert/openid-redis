@@ -28,10 +28,12 @@ log = logging.getLogger(__name__)
 
 def _safe64(s):
     h64 = oidutil.toBase64(cryptutil.sha1(s))
-    h64 = h64.replace('+', '_')
-    h64 = h64.replace('/', '.')
-    h64 = h64.replace('=', '')
-    return h64
+    # to be able to manipulate it, make it a bytearray
+    h64 = bytearray(h64)
+    h64 = h64.replace(b'+', b'_')
+    h64 = h64.replace(b'/', b'.')
+    h64 = h64.replace(b'=', b'')
+    return bytes(h64)
 
 def _filenameEscape(s):
     filename_chunks = []
@@ -139,7 +141,7 @@ class RedisStore(OpenIDStore):
             associations = []
             for assoc in self._conn.mget(assocs):
                 associations.append(Association.deserialize(assoc))
-            associations.sort(cmp=lambda x,y: cmp(x.issued, y.issued))
+            associations.sort(key=lambda x: x.issued)
             if log_debug:
                 log.debug('getAssociation found, returns most recently issued')
             return associations[-1]
